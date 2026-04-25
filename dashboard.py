@@ -8,6 +8,8 @@ import sqlite3
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from pathlib import Path
+
+from pricing import PRICING
 from datetime import datetime
 
 from scanner import VERSION, init_db
@@ -805,23 +807,8 @@ function tzDisplayName(tzMode) {
   }
 }
 
-// ── Pricing (Anthropic API, June 2026) ─────────────────────────────────────
-const PRICING = {
-  // Fable / Mythos — Anthropic's most capable class, priced at 2x Opus.
-  // (Mythos 5 shares Fable 5's pricing; Project-Glasswing access only.)
-  'claude-fable-5':    { input: 10.00, output: 50.00, cache_write: 12.50, cache_read: 1.00 },
-  'claude-mythos-5':   { input: 10.00, output: 50.00, cache_write: 12.50, cache_read: 1.00 },
-  'claude-opus-4-8':   { input:  5.00, output: 25.00, cache_write:  6.25, cache_read: 0.50 },
-  'claude-opus-4-7':   { input:  5.00, output: 25.00, cache_write:  6.25, cache_read: 0.50 },
-  'claude-opus-4-6':   { input:  5.00, output: 25.00, cache_write:  6.25, cache_read: 0.50 },
-  'claude-opus-4-5':   { input:  5.00, output: 25.00, cache_write:  6.25, cache_read: 0.50 },
-  'claude-sonnet-4-7': { input:  3.00, output: 15.00, cache_write:  3.75, cache_read: 0.30 },
-  'claude-sonnet-4-6': { input:  3.00, output: 15.00, cache_write:  3.75, cache_read: 0.30 },
-  'claude-sonnet-4-5': { input:  3.00, output: 15.00, cache_write:  3.75, cache_read: 0.30 },
-  'claude-haiku-4-7':  { input:  1.00, output:  5.00, cache_write:  1.25, cache_read: 0.10 },
-  'claude-haiku-4-6':  { input:  1.00, output:  5.00, cache_write:  1.25, cache_read: 0.10 },
-  'claude-haiku-4-5':  { input:  1.00, output:  5.00, cache_write:  1.25, cache_read: 0.10 },
-};
+// ── Pricing (injected from pricing.py at render time) ─────────────────────
+const PRICING = /*__PRICING_JSON__*/;
 
 function isBillable(model) {
   if (!model) return false;
@@ -2368,6 +2355,19 @@ def find_icon_file():
     return None
 
 
+def render_html():
+    """Render the dashboard page: inject runtime config (version + surface) and
+    the pricing table from pricing.py, so the JS prices can never drift from
+    the Python ones. json.dumps output is a valid JS object literal."""
+    config = json.dumps({"version": VERSION, "surface": SURFACE})
+    return (
+        HTML_TEMPLATE
+        .replace("__APP_CONFIG_JSON__", config)
+        .replace("/*__PRICING_JSON__*/", json.dumps(PRICING))
+        .encode("utf-8")
+    )
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -2378,12 +2378,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # URLs don't fall through to 404.
         path = urlparse(self.path).path
         if path in ("/", "/index.html"):
-            # Inject runtime config (version + surface) the page can't know at
-            # author time. json.dumps produces a valid JS object literal for the
-            # `window.APP_CONFIG = __APP_CONFIG_JSON__;` placeholder in the head.
-            config = json.dumps({"version": VERSION, "surface": SURFACE})
-            html = HTML_TEMPLATE.replace("__APP_CONFIG_JSON__", config)
-            body = html.encode("utf-8")
+            body = render_html()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
