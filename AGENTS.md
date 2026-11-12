@@ -72,9 +72,7 @@ These three things will bite you if you don't know them:
 
 Costs are computed **per turn** (each turn knows its own model), then summed. This is true in both the CLI ([cli.py](cli.py) `calc_cost`) and the dashboard JS ([dashboard.py](dashboard.py) `calcCost` inside the embedded HTML). Aggregating tokens first and applying a single price is wrong for sessions that span multiple models.
 
-Pricing is duplicated in two places that **must stay in sync**:
-- [cli.py](cli.py) `PRICING` dict (Python)
-- [dashboard.py](dashboard.py) `PRICING` const inside `HTML_TEMPLATE` (JavaScript)
+The pricing table has a single source of truth: [pricing.py](pricing.py) `PRICING` (plus `get_pricing` / `calc_cost`, which [cli.py](cli.py) imports). The dashboard's JS `PRICING` const is a `/*__PRICING_JSON__*/` placeholder in `HTML_TEMPLATE`, filled with `json.dumps(PRICING)` by `render_html()` in [dashboard.py](dashboard.py) at request time — so adding a model means editing `pricing.py` only. The **resolution logic** is still duplicated: JS `getPricing` must keep the same tiers and family fallbacks as Python `get_pricing`. `pricing.py` must also stay in the `.vsix` bundle list ([vscode-extension/scripts/copy-python.js](vscode-extension/scripts/copy-python.js)).
 
 `get_pricing` / `getPricing` resolve in three tiers: exact match → `startswith` (handles date-suffixed model IDs like `claude-opus-4-7-20260215`) → substring fallback on `opus` / `sonnet` / `haiku`. Models that don't match any tier return `None` and are billed at $0 (shown as `n/a`) — this is intentional so local/3rd-party models (gemma, glm, etc.) aren't charged at Sonnet rates.
 

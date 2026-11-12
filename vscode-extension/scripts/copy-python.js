@@ -1,6 +1,6 @@
 // Copies the Python sources from the repo root into vscode-extension/python/
 // so they're bundled into the .vsix. Each release of the extension embeds the
-// exact cli.py/scanner.py/dashboard.py snapshot from the commit it was
+// exact cli.py/scanner.py/dashboard.py/pricing.py snapshot from the commit it was
 // packaged at, so end users get a self-contained install — their only
 // dependency is Python 3.8+ on PATH.
 //
@@ -11,7 +11,7 @@ const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const targetDir = path.resolve(__dirname, "..", "python");
-const files = ["cli.py", "scanner.py", "dashboard.py"];
+const files = ["cli.py", "scanner.py", "dashboard.py", "pricing.py"];
 
 fs.mkdirSync(targetDir, { recursive: true });
 

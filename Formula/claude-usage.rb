@@ -15,7 +15,10 @@ class ClaudeUsage < Formula
   depends_on "python@3.13"
 
   def install
-    libexec.install "cli.py", "scanner.py", "dashboard.py"
+    # Glob rather than a fixed list: the formula pins the *previous* release's
+    # tarball, so the set of top-level modules (e.g. pricing.py) can differ
+    # between the formula revision and the tarball it installs.
+    libexec.install Dir["*.py"]
 
     # Reference the versioned interpreter (python3.13): modern python@3.x kegs
     # only ship "python3.13" in their bin — the unversioned "python3" symlink
